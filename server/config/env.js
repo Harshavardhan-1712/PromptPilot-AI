@@ -7,7 +7,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const required = ['OPENAI_API_KEY'];
+const required = ['GEMINI_API_KEY'];
 
 function validateEnv() {
   const missing = required.filter((key) => !process.env[key]);
@@ -26,8 +26,8 @@ validateEnv();
 export const env = {
   PORT: process.env.PORT || 8080,
   NODE_ENV: process.env.NODE_ENV || 'development',
-  OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-  OPENAI_MODEL: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+  GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
   CORS_ORIGIN: process.env.CORS_ORIGIN || '*',
   RATE_LIMIT_WINDOW_MS: Number(process.env.RATE_LIMIT_WINDOW_MS) || 60_000,
   RATE_LIMIT_MAX: Number(process.env.RATE_LIMIT_MAX) || 20,
