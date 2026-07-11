@@ -1,3 +1,10 @@
+import OpenAI from 'openai';
+import { env } from '../config/env.js';
+
+const client = new OpenAI({
+  apiKey: env.OPENAI_API_KEY,
+});
+
 export async function streamImprovedPrompt(systemPrompt, userPrompt, onToken) {
   try {
     const stream = await client.chat.completions.create({
@@ -17,12 +24,12 @@ export async function streamImprovedPrompt(systemPrompt, userPrompt, onToken) {
       }
     }
   } catch (err) {
-    console.error("OPENAI ERROR:");
+    console.error("========== OPENAI ERROR ==========");
     console.error(err);
-
-    if (err.status) console.error("Status:", err.status);
-    if (err.code) console.error("Code:", err.code);
-    if (err.message) console.error("Message:", err.message);
+    console.error("Status:", err.status);
+    console.error("Code:", err.code);
+    console.error("Message:", err.message);
+    console.error("==================================");
 
     throw err;
   }
