@@ -16,6 +16,7 @@ import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
+app.set("trust proxy", 1);
 
 app.use(
   cors({
