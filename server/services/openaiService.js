@@ -1,36 +1,29 @@
-import OpenAI from 'openai';
-import { env } from '../config/env.js';
+import { GoogleGenAI } from "@google/genai";
+import { env } from "../config/env.js";
 
-const client = new OpenAI({
-  apiKey: env.OPENAI_API_KEY,
+const client = new GoogleGenAI({
+  apiKey: env.GEMINI_API_KEY,
 });
 
 export async function streamImprovedPrompt(systemPrompt, userPrompt, onToken) {
-  try {
-    const stream = await client.chat.completions.create({
-      model: env.OPENAI_MODEL,
-      stream: true,
-      temperature: 0.7,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-    });
+  const response = await client.models.generateContentStream({
+    model: env.GEMINI_MODEL,
+    contents: [
+      {
+        role: "user",
+        parts: [
+          {
+            text: `${systemPrompt}\n\n${userPrompt}`,
+          },
+        ],
+      },
+    ],
+  });
 
-    for await (const part of stream) {
-      const token = part.choices?.[0]?.delta?.content;
-      if (token) {
-        onToken(token);
-      }
+  for await (const chunk of response) {
+    const text = chunk.text;
+    if (text) {
+      onToken(text);
     }
-  } catch (err) {
-    console.error("========== OPENAI ERROR ==========");
-    console.error(err);
-    console.error("Status:", err.status);
-    console.error("Code:", err.code);
-    console.error("Message:", err.message);
-    console.error("==================================");
-
-    throw err;
   }
 }
