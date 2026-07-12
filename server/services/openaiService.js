@@ -6,6 +6,8 @@ const client = new GoogleGenAI({
 });
 
 export async function streamImprovedPrompt(systemPrompt, userPrompt, onToken) {
+  console.log("🚀 Calling Gemini...");
+
   const response = await client.models.generateContentStream({
     model: env.GEMINI_MODEL,
     contents: [
@@ -20,10 +22,15 @@ export async function streamImprovedPrompt(systemPrompt, userPrompt, onToken) {
     ],
   });
 
+  console.log("✅ Stream opened");
+
   for await (const chunk of response) {
-    const text = chunk.text;
-    if (text) {
-      onToken(text);
+    console.log("📦 Chunk:", chunk.text);
+
+    if (chunk.text) {
+      onToken(chunk.text);
     }
   }
+
+  console.log("🏁 Stream finished");
 }
