@@ -39,14 +39,17 @@ export async function improvePrompt(req, res, next) {
       sendEvent('done', { done: true });
       res.end();
     }
-  } catch (err) {
-    if (!clientClosed) {
-      // Try to deliver a structured error over the open stream first.
-      try {
-        sendEvent('error', {
-          error: err.status === 429 ? 'Rate limit exceeded. Please try again shortly.' : 'Failed to generate response.',
-        });
-        res.end();
+  } } catch (err) {
+  console.error("========== CONTROLLER ERROR ==========");
+  console.error(err);
+  console.error("======================================");
+
+  if (!clientClosed) {
+    sendEvent("error", {
+      error: err.message || "Failed to generate response.",
+    });
+    res.end();
+  }
       } catch {
         next(err);
       }
