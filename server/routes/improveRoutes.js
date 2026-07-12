@@ -15,6 +15,6 @@ const improveLimiter = rateLimit({
   message: { error: 'Too many requests. Please slow down and try again shortly.' },
 });
 
-router.post('/improve', improveLimiter, validateImproveRequest, improvePrompt);
+router.post('/improve', validateImproveRequest, improvePrompt);
 
 export default router;
