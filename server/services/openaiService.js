@@ -6,31 +6,29 @@ const client = new GoogleGenAI({
 });
 
 export async function streamImprovedPrompt(systemPrompt, userPrompt, onToken) {
-  console.log("🚀 Calling Gemini...");
+  try {
+    console.log("🚀 Calling Gemini...");
+    console.log("Model:", env.GEMINI_MODEL);
 
-  const response = await client.models.generateContentStream({
-    model: env.GEMINI_MODEL,
-    contents: [
-      {
-        role: "user",
-        parts: [
-          {
-            text: `${systemPrompt}\n\n${userPrompt}`,
-          },
-        ],
-      },
-    ],
-  });
+    const response = await client.models.generateContentStream({
+      model: env.GEMINI_MODEL,
+      contents: `${systemPrompt}\n\n${userPrompt}`,
+    });
 
-  console.log("✅ Stream opened");
+    console.log("✅ Stream opened");
 
-  for await (const chunk of response) {
-    console.log("📦 Chunk:", chunk.text);
+    for await (const chunk of response) {
+      console.log("📦", chunk.text);
 
-    if (chunk.text) {
-      onToken(chunk.text);
+      if (chunk.text) {
+        onToken(chunk.text);
+      }
     }
-  }
 
-  console.log("🏁 Stream finished");
+    console.log("🏁 Stream finished");
+  } catch (err) {
+    console.error("🔥 GEMINI ERROR");
+    console.error(err);
+    throw err;
+  }
 }
