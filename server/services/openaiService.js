@@ -1,34 +1,28 @@
-// services/openaiService.js
-// Thin wrapper around the OpenAI SDK. Isolating the SDK here means the rest
-// of the app never touches API keys or vendor-specific response shapes.
+import { GoogleGenAI } from "@google/genai";
+import { env } from "../config/env.js";
 
-import OpenAI from 'openai';
-import { env } from '../config/env.js';
+const client = new GoogleGenAI({
+  apiKey: env.GEMINI_API_KEY,
+});
 
-const client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
-
-/**
- * Streams a chat completion token-by-token.
- * @param {string} systemPrompt
- * @param {string} userPrompt
- * @param {(chunk: string) => void} onToken - called for each text delta
- * @returns {Promise<void>} resolves when the stream completes
- */
 export async function streamImprovedPrompt(systemPrompt, userPrompt, onToken) {
-  const stream = await client.chat.completions.create({
-    model: env.OPENAI_MODEL,
-    stream: true,
-    temperature: 0.7,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
+  const response = await client.models.generateContentStream({
+    model: env.GEMINI_MODEL,
+    contents: [
+      {
+        role: "user",
+        parts: [
+          {
+            text: `${systemPrompt}\n\n${userPrompt}`,
+          },
+        ],
+      },
     ],
   });
 
-  for await (const part of stream) {
-    const token = part.choices?.[0]?.delta?.content;
-    if (token) {
-      onToken(token);
+  for await (const chunk of response) {
+    if (chunk.text) {
+      onToken(chunk.text);
     }
   }
 }
