@@ -1,12 +1,14 @@
 // services/api.js
 
-const API_BASE = import.meta.env.VITE_API_URL || "";
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 export async function improvePromptStream(
   payload,
   { onToken, onDone, onError },
   signal
 ) {
+  console.log("========== STARTING STREAM ==========");
+
   let response;
 
   try {
@@ -19,15 +21,24 @@ export async function improvePromptStream(
       signal,
     });
 
-    console.log("Response:", response.status);
+    console.log("Response Status:", response.status);
+    console.log("Response Headers:", [...response.headers.entries()]);
   } catch (err) {
-    console.error(err);
+    console.error("Fetch Error:", err);
     onError("Network error.");
     return;
   }
 
   if (!response.ok || !response.body) {
-    onError("Server error.");
+    console.error("Invalid Response");
+
+    try {
+      const data = await response.json();
+      onError(data.error || "Something went wrong.");
+    } catch {
+      onError("Something went wrong.");
+    }
+
     return;
   }
 
@@ -40,19 +51,19 @@ export async function improvePromptStream(
     while (true) {
       const { value, done } = await reader.read();
 
+      console.log("Reader Result:", {
+        done,
+        bytes: value?.length,
+      });
+
       if (done) {
-        console.log("Stream finished.");
-
-        // Process any remaining buffered message
-        if (buffer.trim()) {
-          processMessage(buffer);
-        }
-
-        onDone();
-        return;
+        console.log("========== STREAM FINISHED ==========");
+        break;
       }
 
-      const chunk = decoder.decode(value, { stream: true });
+      const chunk = decoder.decode(value, {
+        stream: true,
+      });
 
       console.log("RAW CHUNK:");
       console.log(chunk);
@@ -62,58 +73,64 @@ export async function improvePromptStream(
       const messages = buffer.split("\n\n");
       buffer = messages.pop() || "";
 
+      console.log("Messages Found:", messages.length);
+
       for (const message of messages) {
-        processMessage(message);
+        console.log("---------------");
+        console.log("MESSAGE:");
+        console.log(message);
+
+        const lines = message.split("\n");
+
+        let event = "";
+        let data = "";
+
+        for (const line of lines) {
+          console.log("LINE:", line);
+
+          if (line.startsWith("event:")) {
+            event = line.replace("event:", "").trim();
+          }
+
+          if (line.startsWith("data:")) {
+            data = line.replace("data:", "").trim();
+          }
+        }
+
+        console.log("EVENT =", event);
+        console.log("DATA =", data);
+
+        if (!data) continue;
+
+        try {
+          const parsed = JSON.parse(data);
+
+          if (event === "token") {
+            console.log("TOKEN RECEIVED:", parsed.token);
+            onToken(parsed.token);
+          }
+
+          if (event === "done") {
+            console.log("DONE EVENT");
+            onDone();
+          }
+
+          if (event === "error") {
+            console.log("ERROR EVENT");
+            onError(parsed.error);
+          }
+        } catch (e) {
+          console.error("JSON Parse Error:", e);
+        }
       }
     }
   } catch (err) {
-    console.error(err);
+    console.error("Reader Error:", err);
 
     if (err.name !== "AbortError") {
-      onError(err.message);
+      onError("Connection interrupted.");
     }
   }
 
-  function processMessage(message) {
-    console.log("MESSAGE:");
-    console.log(message);
-
-    const lines = message.split("\n");
-
-    let event = "";
-    let data = "";
-
-    for (const line of lines) {
-      if (line.startsWith("event:")) {
-        event = line.substring(6).trim();
-      }
-
-      if (line.startsWith("data:")) {
-        data += line.substring(5).trim();
-      }
-    }
-
-    if (!data) return;
-
-    console.log("EVENT:", event);
-    console.log("DATA:", data);
-
-    try {
-      const parsed = JSON.parse(data);
-
-      if (event === "token") {
-        onToken(parsed.token);
-      }
-
-      if (event === "done") {
-        onDone();
-      }
-
-      if (event === "error") {
-        onError(parsed.error);
-      }
-    } catch (err) {
-      console.error("JSON Parse Error:", err);
-    }
-  }
+  console.log("========== API COMPLETE ==========");
 }
