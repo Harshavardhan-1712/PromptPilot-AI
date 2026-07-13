@@ -18,7 +18,7 @@ export default function Dashboard() {
   const [history, setHistory] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const { output, isStreaming, error, run } = useImprovePrompt();
+const { output, isStreaming, error, run, cancel } = useImprovePrompt();
   const { toast, showToast } = useToast();
 
   useEffect(() => {
