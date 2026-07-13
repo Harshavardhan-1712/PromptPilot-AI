@@ -1,18 +1,18 @@
-// controllers/improveController.js
-// Handles POST /api/improve. Streams the optimized prompt back to the
-// client using Server-Sent Events so the UI can render tokens progressively.
+import { buildSystemPrompt } from "../services/promptBuilder.js";
+import { streamImprovedPrompt } from "../services/openaiService.js";
 
-import { buildSystemPrompt } from '../services/promptBuilder.js';
-import { streamImprovedPrompt } from '../services/openaiService.js';
+export async function improvePrompt(req, res) {
+  console.log("========== CONTROLLER HIT ==========");
 
-export async function improvePrompt(req, res, next) {
   const { prompt, style } = req.body;
 
-  // SSE headers
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache, no-transform');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no'); // disable proxy buffering (e.g. nginx)
+  console.log("Prompt:", prompt);
+  console.log("Style:", style);
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
   res.flushHeaders?.();
 
   const sendEvent = (event, data) => {
@@ -20,36 +20,47 @@ export async function improvePrompt(req, res, next) {
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
 
-  // If the client disconnects early, stop wasting tokens.
-  let clientClosed = false;
-  req.on('close', () => {
-    clientClosed = true;
+  let closed = false;
+
+  req.on("close", () => {
+    closed = true;
+    console.log("Client disconnected");
   });
 
   try {
+    console.log("Building system prompt...");
     const systemPrompt = buildSystemPrompt(style);
+    console.log("System prompt built.");
+
+    console.log("Calling Gemini...");
 
     await streamImprovedPrompt(systemPrompt, prompt, (token) => {
-      if (!clientClosed) {
-        sendEvent('token', { token });
+      console.log("TOKEN:", token);
+
+      if (!closed) {
+        sendEvent("token", { token });
       }
     });
 
-    if (!clientClosed) {
-      sendEvent('done', { done: true });
+    console.log("Gemini stream completed.");
+
+    if (!closed) {
+      console.log("Sending DONE event.");
+      sendEvent("done", { done: true });
       res.end();
     }
+
+    console.log("========== REQUEST FINISHED ==========");
   } catch (err) {
-    if (!clientClosed) {
-      // Try to deliver a structured error over the open stream first.
-      try {
-        sendEvent('error', {
-          error: err.status === 429 ? 'Rate limit exceeded. Please try again shortly.' : 'Failed to generate response.',
-        });
-        res.end();
-      } catch {
-        next(err);
-      }
+    console.error("========== CONTROLLER ERROR ==========");
+    console.error(err);
+    console.error("======================================");
+
+    if (!closed) {
+      sendEvent("error", {
+        error: err.message || "Failed to generate response.",
+      });
+      res.end();
     }
   }
 }
