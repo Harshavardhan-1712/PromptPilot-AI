@@ -70,11 +70,12 @@ export default function Dashboard() {
               <PromptInput value={prompt} onChange={setPrompt} disabled={isStreaming} />
               <StyleSelector value={style} onChange={setStyle} disabled={isStreaming} />
               <div className="flex justify-end">
-                <ImproveButton
-                  onClick={handleImprove}
-                  isStreaming={isStreaming}
-                  disabled={isStreaming || !prompt.trim()}
-                />
+               <ImproveButton
+  onClick={handleImprove}
+  onCancel={cancel}
+  isStreaming={isStreaming}
+  disabled={!prompt.trim()}
+/>
               </div>
             </div>
 
