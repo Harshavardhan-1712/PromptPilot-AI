@@ -10,21 +10,38 @@ export async function improvePrompt(req, res) {
   console.log("Style:", style);
 
   res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
 
   res.flushHeaders?.();
 
+  // Force the SSE connection to start immediately
+  res.write(": connected\n\n");
+
   const sendEvent = (event, data) => {
-    res.write(`event: ${event}\n`);
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
+    const message =
+      `event: ${event}\n` +
+      `data: ${JSON.stringify(data)}\n\n`;
+
+    console.log("Sending Event:", event);
+
+    res.write(message);
+
+    // Flush if available
+    res.flush?.();
   };
 
   let closed = false;
 
-  req.on("close", () => {
+  res.on("close", () => {
     closed = true;
-    console.log("Client disconnected");
+    console.log("Response closed");
+  });
+
+  req.on("aborted", () => {
+    closed = true;
+    console.log("Request aborted");
   });
 
   try {
@@ -37,30 +54,25 @@ export async function improvePrompt(req, res) {
     await streamImprovedPrompt(systemPrompt, prompt, (token) => {
       console.log("TOKEN:", token);
 
-      if (!closed) {
-        sendEvent("token", { token });
-      }
+      // Send regardless for this test
+      sendEvent("token", { token });
     });
 
     console.log("Gemini stream completed.");
 
-    if (!closed) {
-      console.log("Sending DONE event.");
-      sendEvent("done", { done: true });
-      res.end();
-    }
+    sendEvent("done", { done: true });
+
+    res.end();
 
     console.log("========== REQUEST FINISHED ==========");
   } catch (err) {
     console.error("========== CONTROLLER ERROR ==========");
     console.error(err);
-    console.error("======================================");
 
-    if (!closed) {
-      sendEvent("error", {
-        error: err.message || "Failed to generate response.",
-      });
-      res.end();
-    }
+    sendEvent("error", {
+      error: err.message || "Failed to generate response.",
+    });
+
+    res.end();
   }
 }
