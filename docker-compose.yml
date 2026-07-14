@@ -5,20 +5,31 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+
     container_name: promptpilot-ai
+
     ports:
       - '8080:8080'
+
     environment:
       - NODE_ENV=production
       - PORT=8080
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.1-flash-lite}
       - CORS_ORIGIN=${CORS_ORIGIN:-*}
       - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS:-60000}
       - RATE_LIMIT_MAX=${RATE_LIMIT_MAX:-20}
+
     restart: unless-stopped
+
     healthcheck:
-      test: ['CMD', 'node', '-e', "fetch('http://localhost:8080/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:8080/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ]
       interval: 30s
       timeout: 5s
       retries: 3
